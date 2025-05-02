@@ -5,34 +5,101 @@
 
 static shared as hwnd hConsole
 static shared as bool bMustFreeConsole
-static shared as hwnd g_hRunDlg , g_hRunCombo
+static shared as hwnd g_hRunDlg , g_hRunCombo , g_hComboEdit , g_hComboEditTemp
 static shared as rect g_tDlgRect
+
+static shared as any ptr pOrgComboEditProc , pOrgComboEditTempProc
+function ComboEditTempProc( hwnd as HWND , uMsg as ULONG , wParam as WPARAM , lParam as LPARAM ) as LResult   
+   return CallWindowProc( pOrgComboEditTempProc , hwnd , uMsg , wparam , lParam )
+end function
+function ComboEditProc( hwnd as HWND , uMsg as ULONG , wParam as WPARAM , lParam as LPARAM ) as LResult   
+   if g_hComboEditTemp = 0 then
+      'var lStyle = GetWindowLong( g_hComboEdit , GWL_STYLE ) (lStyle and (not WS_DISABLED))
+      var iID = GetWindowLong( g_hComboEdit , GWL_ID )+1
+      var lStyle2 = WS_CHILD or WS_VSCROLL or ES_MULTILINE or WS_VISIBLE or ES_NOHIDESEL
+      g_hComboEditTemp = CreateWindowEx( WS_EX_TOPMOST , "edit" , "" , lStyle2 , 0,0,320,60 , g_hRunDlg , cast(HMENU,iID),0,0 )      
+      SendMessage( g_hComboEditTemp , WM_SETFONT , CallWindowProc( pOrgComboEditProc , hwnd , WM_GETFONT,0,0) , true )
+      pOrgComboEditTempProc = cast(any ptr , SetWindowLongPtr( g_hComboEditTemp , GWLP_WNDPROC , cast(LONG_PTR , @ComboEditTempProc) ) )
+   end if
+   select case uMsg
+   case WM_GETTEXT
+      puts("WM_GETTEXT")
+      return CallWindowProc( pOrgComboEditTempProc , g_hComboEditTemp , uMsg , wparam , lParam )         
+   case WM_SETTEXT
+      puts("WM_SETTEXT")
+      return CallWindowProc( pOrgComboEditTempProc , g_hComboEditTemp , uMsg , wparam , lParam )
+   end select
+   'printf(!"hwnd: %p , uMsg=%i , wParam=%p , lParam = %p\n",hwnd,uMsg,wParam,lParam)   
+   'SendMessage( g_hComboEditTemp , uMsg , wParam , lParam )
+   'CallWindowProc( pOrgComboEditTempProc , g_hComboEditTemp , uMsg , wparam , lParam )         
+   return CallWindowProc( pOrgComboEditProc , hwnd , uMsg , wparam , lParam )   
+end function
+
+static shared as any ptr pOrgComboProc
+function ComboProc( hwnd as HWND , uMsg as ULONG , wParam as WPARAM , lParam as LPARAM ) as LResult   
+   if pOrgComboProc=0 then return DefWindowProc( hWnd , uMsg , wParam , lParam )   
+   'select case uMsg
+   'case WM_SIZE,WM_SIZING
+   '   return DefWindowProc( hWnd , uMsg , wParam , lParam )   
+   'end select
+   return CallWindowProc( pOrgComboProc , hwnd , uMsg , wParam , lParam )
+end function
 
 static shared as any ptr pOrgDlgProc
 function DlgProc( hwnd as HWND , uMsg as ULONG , wParam as WPARAM , lParam as LPARAM ) as LResult   
    if pOrgDlgProc=0 then return DefWindowProc( hWnd , uMsg , wParam , lParam )   
    select case uMsg      
+   case WM_COMMAND
+      'puts("WM_COMMAND")
+      var wNotifyCode = clng(HIWORD(wParam)) 'notification code 
+      var wID = LOWORD(wParam)
+      if wNotifyCode = BN_CLICKED then         
+         if (wID or (DC_HASDEFID shl 16)) = SendMessage( hWnd , DM_GETDEFID , 0 , 0 ) then
+            puts("Default push button!")            
+            dim as string sTemp = space( GetWindowTextLength( g_hComboEditTemp ) )
+            GetWindowText( g_hComboEditTemp , strptr(sTemp) , len(sTemp)+1 )
+            var iMulti = 0, iPosi = 1
+            do 
+              iPosi = instr( iPosi , sTemp , chr(13,10) )
+              if iPosi then iMulti += 1 : *cptr(ushort ptr,strptr(sTemp)+iPosi-1) = &h7C20
+            loop while iPosi
+            if iMulti then SetWindowText( g_hComboEditTemp , "cmd /c "+sTemp ) 
+         end if         
+      end if
+      'return DefWindowProc( hWnd , uMsg , wParam , lParam )   
    case WM_SIZE,WM_SIZING
-      if g_hRunDlg andalso g_hRunCombo then
+      if g_hRunDlg andalso g_hRunCombo andalso IsIconic(g_hRunDlg)=false then
+         static tOrgRc as RECT , lCbDiff as long
          dim as rect tNewDlgRc , tComboRc , tTempRc
          GetClientRect( hwnd , @tNewDlgRc )
+         if tOrgRc.right = 0 then 
+            tOrgRc = tNewDlgRc : GetClientRect( g_hRunCombo , @tTempRc )
+            lCbDiff = tOrgRc.right-tTempRc.right
+         end if
+         if tNewDlgRc.right < tOrgRc.right then tNewDlgRc.right = tOrgRc.right
+         if tNewDlgRc.bottom < tOrgRc.bottom then tNewDlgRc.bottom = tOrgRc.bottom         
+         
          GetWindowRect( g_hRunCombo , @tComboRc )
          dim as HWND hCTL
          var iYDiff = cint(tNewDlgRc.bottom)-cint(g_tDlgRect.bottom)
          do
             hCTL = FindWindowEx( g_hRunDlg , hCTL , NULL , NULL )
             if hCTL = 0 then exit do
-            if hCTL = g_hRunCombo then continue do
+            if hCTL = g_hRunCombo then 
+               SetWindowPos( hCtl , 0 , 0,0 , tNewDlgRc.right-lCbDiff,64 , SWP_NOMOVE or SWP_NOACTIVATE or SWP_NOZORDER )
+               continue do
+            end if
             GetWindowRect( hCTL , @tTempRc )
-            if tTempRc.top > tComboRc.bottom then
+            if (tTempRc.top) > tComboRc.bottom then
                tTempRc.top += iYDiff
                if tTempRc.top > tComboRc.bottom then               
-                  ScreenToClient( hwnd , cast(POINT ptr,@tTempRc.left) )                              
+                  ScreenToClient( hwnd , cast(POINT ptr,@tTempRc.left) )                                                
                   SetWindowPos( hCtl , 0 , tTempRc.left,tTempRc.top , 0,0 , SWP_NOSIZE or SWP_NOACTIVATE or SWP_NOZORDER )
                end if
             end if
          loop      
          g_tDlgRect = tNewDlgRc
+         InvalidateRect( g_hRunDlg , NULL , FALSE )
       end if
       'return DefWindowProc( hWnd , uMsg , wParam , lParam )   
    end select
@@ -56,7 +123,10 @@ function DllThread( hModule as any ptr ) as DWORD
    pOrgDlgProc = cast(any ptr, SetWindowLongPtr( g_hRunDlg , GWLP_WNDPROC , cast(LONG_PTR,@dlgProc) ) )
    
    var lStyle = GetWindowLong( g_hRunDlg , GWL_STYLE )
-   SetWindowLong( g_hRunDlg , GWL_STYLE , lStyle or WS_SIZEBOX ) 
+   SetWindowLong( g_hRunDlg , GWL_STYLE , lStyle or WS_SIZEBOX ) ' or WS_MINIMIZEBOX ) 
+   'SetParent( g_hRunDlg , NULL )
+   'SetWindowLong( g_hRunDlg , GWL_HINSTANCE , 0 )
+
    SetWindowPos( g_hRunDlg , 0,0,0,0,0 , SWP_NOMOVE or SWP_NOSIZE or SWP_NOZORDER or SWP_FRAMECHANGED )
    
    dim as HWND hwnd
@@ -68,12 +138,24 @@ function DllThread( hModule as any ptr ) as DWORD
    loop
    
    GetClientRect( g_hRunDlg , @g_tDlgRect )
-   g_hRunCombo = FindWindowEx( g_hRunDlg , 0 , "ComboBox" , NULL )
-   var hEdit = FindWindowEx( g_hRunCombo , 0 , "edit" , NULL )
-   lStyle = GetWindowLong( hEdit , GWL_STYLE )
-   SetWindowLong( hEdit , GWL_STYLE , lStyle or WS_VSCROLL or ES_MULTILINE ) 
-   SetWindowPos( hEdit , 0,0,0,0,0 , SWP_NOMOVE or SWP_NOSIZE or SWP_NOZORDER or SWP_FRAMECHANGED )
-   'SetWindowText( hEdit , "Hello World" )
+   g_hRunCombo = FindWindowEx( g_hRunDlg , 0 , "ComboBox" , NULL )   
+   if g_hRunCombo then
+      pOrgComboProc = cast(any ptr, SetWindowLongPtr( g_hRunCombo , GWLP_WNDPROC , cast(LONG_PTR,@comboProc) ) )
+   end if
+   g_hComboEdit = FindWindowEx( g_hRunCombo , 0 , "edit" , NULL )
+      
+   scope
+      'SetWindowLong( hEdit , GWL_STYLE , lStyle or WS_VSCROLL or ES_MULTILINE )          
+      'SetWindowPos( hEdit , 0,0,0,0,0 , SWP_NOMOVE or SWP_NOSIZE or SWP_NOZORDER or SWP_FRAMECHANGED )   
+      printf(!"hEdit = %p\n",g_hComboEdit)      
+      ShowWindow( g_hComboEdit , SW_HIDE )      
+      pOrgComboEditProc = cast(any ptr,SetWindowLongPtr( g_hComboEdit , GWLP_WNDPROC , cast(LONG_PTR,@ComboEditProc) ))      
+      SendMessage( g_hComboEdit , WM_NULL , 0,0 )
+   end scope
+
+   'printf(!"Handle=%p\n",SendMessage(g_hComboEdit,EM_GETHANDLE,0,0))
+   
+   'SetWindowText( g_hComboEdit , "Hello World" )
       
    dim as RECT tRC , tOldRC
    dim as HWND hWndPnt

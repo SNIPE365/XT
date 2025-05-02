@@ -1,0 +1,4 @@
+- [Shell::RunDlg] make input field resize with the dialogs horizonal resizing, later we will make it do the same vertically but this is probably harder because we need to: 
+- [Shell::RunDlg] change the flags for the combo-box to MULTI_LINE_EDIT rather than SINGLE_LINE_EDIT.
+- [Shell::RunDlg] prevent Ok and Cancel buttons from being destroyed when resizing the dialog box down and then back up again.
+- [Shell::RunDlg] use encrypted strings... and dynamic load of the encrypted strings functions so antivirus software doesn't flag files in XT.
