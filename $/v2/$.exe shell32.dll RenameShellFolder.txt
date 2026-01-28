@@ -1,0 +1,19 @@
+$.exe shell32.dll,RenameShellFolder "Recycle Bin"; or {645FF040-5081-101B-9F08-00AA002F954E};
+$.exe shell32.dll,RenameShellFolder "Desktop"; or {21EC2020-3AEA-1069-A2DD-08002B30309D};
+$.exe shell32.dll,RenameShellFolder "My Documents"; or {450D8FBA-AD25-11D0-98A8-0800361B1103};
+$.exe shell32.dll,RenameShellFolder "My Pictures"; or {88250a20-f8f7-4cb9-a5e7-9e8e77467640};;
+$.exe shell32.dll,RenameShellFolder "My Music"; or {88250a20-f8f7-4cb9-a5e7-9e8e77467641};
+$.exe shell32.dll,RenameShellFolder "My Videos"; or {88250a20-f8f7-4cb9-a5e7-9e8e77467642};
+$.exe shell32.dll,RenameShellFolder "My Computer"; or {20D04FE0-3AEA-1069-A2D8-08002B30309D};
+$.exe shell32.dll,RenameShellFolder "Control Panel"; or {21EC2020-3AEA-1069-A2DD-08002B30309D};
+$.exe shell32.dll,RenameShellFolder "My Network Places"; or {208D2C60-3AEA-1069-A2D7-08002B30309D};
+$.exe shell32.dll,RenameShellFolder "Network Connections"; or {992CFFA0-F557-101A-88EC-00DD010CCC48};
+$.exe shell32.dll,RenameShellFolder "Printers and Faxes"; or {2227A280-3AEA-1069-A2DE-08002B30309D};
+$.exe shell32.dll,RenameShellFolder "Scanners and Cameras"; or {};
+$.exe shell32.dll,RenameShellFolder "Portable Media Devices"; or {};
+$.exe shell32.dll,RenameShellFolder "Fonts"; or {BD84B380-8CA2-1069-AB1D-08000948F534};
+$.exe shell32.dll,RenameShellFolder "Favorites"; or {1A9BA3A0-143A-11CF-8350-444553540000};
+$.exe shell32.dll,RenameShellFolder "Scheduled Tasks"; or {D6277990-4C6A-11CF-8D87-00AA0060F5BF};
+$.exe shell32.dll,RenameShellFolder "Hisitory"; or {FF393560-C2A7-11CF-BFF4-444553540000};
+
+
